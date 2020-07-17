@@ -1,0 +1,200 @@
+**& Web wrapper for a U/S/D module for UT-EPD-CLASS.
+**%*********************************************************************
+**%          SOFTWARE (C) THE UNIVERSITY OF TEXAS AT AUSTIN.           *
+**%                       ALL RIGHTS RESERVED.                         *
+**%UNAUTHORIZED COPYING OR TRANSMISSION OF THIS SOFTWARE IS PROHIBITED.*
+**%*********************************************************************
+**%             R E M A R K S    S E C T I O N
+**%******************************************************************* *
+**%
+**%   OBJECT NAME: UTNP9EUW
+**%        AUTHOR: Marjorie Foley (NRMDF)
+**%    FILES READ: None
+**% FILES UPDATED: None
+**%       PURPOSE: Web wrapper for a update/store/delete
+**%                module for UT-EPD-CLASS and, secondarily, for
+**%                UT-EPD-ENROLLEE.
+**%
+**%******************************************************************* *
+*          D A T A   D E F I N I T I O N   S E C T I O N
+* ******************************************************************** *
+*
+DEFINE DATA
+*
+PARAMETER USING UTDP9EUW
+*
+LOCAL USING UTDP9EUS     /* U/S/D module for UT-EPD-CLASS & ENROLLEE
+LOCAL USING UTDLUSRN     /* parses user UIN
+LOCAL USING UTDPELKP     /* assists in security check
+LOCAL USING UTDPSECU     /* performs security check
+*
+LOCAL
+*
+1 #MAX-INSTRUCTORS          (N2) CONST <3>
+*
+1 #INSTRUCTOR-COUNTER       (N2)
+*
+1 #IX                       (I4)
+*
+END-DEFINE
+*
+* ******************************************************************** *
+*                M A I N   L O G I C   S E C T I O N
+* -------------------------------------------------------------------- *
+*
+PERFORM INITIAL-PROCESSING
+*       ==================
+*
+IF #UTDP9EUW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+PERFORM CHECK-USER-AUTHORIZATION
+*       =======================
+*
+IF #UTDP9EUW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+PERFORM TRANSLATE-WEB-INPUT
+*       ===================
+*
+IF #UTDP9EUW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+PERFORM CALL-UPDATE-STORE-DELETE-MODULE
+*       ===============================
+*
+IF #UTDP9EUW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+* ******************************************************************** *
+*      I N T E R N A L   S U B R O U T I N E   S E C T I O N
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE INITIAL-PROCESSING
+* -------------------------------------------------------------------- *
+*
+RESET #UTDP9EUW-SEND
+*
+COMPUTE #UTDP9EUW-SEND-AMOUNT =  POS(#UTDP9EUW-SEND.LAST-SEND-FIELD)
+                                -POS(#UTDP9EUW-SEND.SEND-ARRAY (1) ) +1
+*
+MOVE BY NAME #UTDP9EUW-RECV        TO #UTDP9EUW-SEND
+*
+EXAMINE #UTDP9EUW-RECV.COMPONENT         AND TRANSLATE INTO UPPER CASE
+EXAMINE #UTDP9EUW-RECV.COURSE-CATEGORY   AND TRANSLATE INTO UPPER CASE
+EXAMINE #UTDP9EUW-RECV.LOCATION          AND TRANSLATE INTO UPPER CASE
+*
+END-SUBROUTINE                /* INITIAL-PROCESSING
+*
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE CHECK-USER-AUTHORIZATION
+* -------------------------------------------------------------------- *
+RESET #UTDPSECU
+*
+MOVE TRUE                          TO #UTDPSECU.CHECK-IF-ADMINISTRATOR
+MOVE #UTDLUSRN.USER-PERM-EID       TO #UTDPSECU.USER-PERM-EID
+*
+CALLNAT 'DPNPSECU' #UTDPSECU
+*        ========
+*
+IF #UTDPSECU.RTN-CODE NE ' '
+  MOVE 'XSEC'                      TO #UTDP9EUW-SEND.RETURN-CODE
+  COMPRESS #UTDPSECU.RTN-CODE #UTDPSECU.RTN-MSG
+                                   TO #UTDP9EUW-SEND.RETURN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+MOVE #UTDPSECU.IS-ADMIN   TO #UTDP9EUW-SEND.VALID-ADMIN-USER
+*
+END-SUBROUTINE                /* CHECK-USER-AUTHORIZATION
+*
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE TRANSLATE-WEB-INPUT
+* -------------------------------------------------------------------- *
+RESET #UTDP9EUS
+*
+FOR-INST-UIN.
+*
+FOR #IX FROM 1 TO #MAX-INSTRUCTORS
+  IF #UTDP9EUW-RECV.INSTRUCTOR-EID(#IX) EQ ' '
+    ESCAPE TOP
+  END-IF
+*
+  ADD 1 TO #INSTRUCTOR-COUNTER
+*
+  MOVE #UTDP9EUW-RECV.INSTRUCTOR-EID(#IX)
+                                   TO #UTDPELKP.IN-EID
+*
+  CALLNAT 'UTN$ELKP' #UTDPELKP
+*          ========
+*
+  IF #UTDPELKP.RETURN-CODE NE ' '
+    MOVE 'NTEL'                    TO #UTDP9EUW-SEND.RETURN-CODE
+    COMPRESS #UTDPELKP.RETURN-CODE #UTDPELKP.RETURN-MSG
+                                   TO #UTDP9EUW-SEND.RETURN-MSG
+    ESCAPE ROUTINE
+  END-IF
+*
+  MOVE #UTDPELKP.UIN               TO #UTDP9EUS.IN-INSTRUCTOR-UIN(#IX)
+*
+  IF #INSTRUCTOR-COUNTER GE #MAX-INSTRUCTORS
+    ESCAPE BOTTOM
+  END-IF
+*
+END-FOR
+*
+END-SUBROUTINE                /* TRANSLATE-WEB-INPUT
+*
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE CALL-UPDATE-STORE-DELETE-MODULE
+* -------------------------------------------------------------------- *
+*
+* Data sent to NRN$9EUS is audited downstream by NRN$9EAU.
+*
+MOVE #UTDP9EUW-RECV.ACTION         TO #UTDP9EUS.IN-ACTION
+MOVE #UTDP9EUW-RECV.COMPONENT      TO #UTDP9EUS.IN-COMPONENT
+MOVE #UTDP9EUW-RECV.CLASS-UNIQUE-NUMBER
+                                   TO #UTDP9EUS.IN-CLASS-UNIQUE-NUMBER
+MOVE #UTDP9EUW-RECV.COURSE-ID      TO #UTDP9EUS.IN-COURSE-ID
+MOVE #UTDP9EUW-RECV.CLASS-MEETING-CYMD
+                                   TO #UTDP9EUS.IN-CLASS-MEETING-CYMD
+MOVE #UTDP9EUW-RECV.ENROLLMENT-LIMIT
+                                   TO #UTDP9EUS.IN-ENROLLMENT-LIMIT
+MOVE #UTDP9EUW-RECV.STUDENT-FEE    TO #UTDP9EUS.IN-STUDENT-FEE
+MOVE #UTDP9EUW-RECV.CLASS-BEGIN-TIME-HHII
+                                   TO #UTDP9EUS.IN-CLASS-BEGIN-TIME-HHII
+MOVE #UTDP9EUW-RECV.CLASS-END-TIME-HHII
+                                   TO #UTDP9EUS.IN-CLASS-END-TIME-HHII
+MOVE #UTDP9EUW-RECV.LOCATION       TO #UTDP9EUS.IN-LOCATION
+*
+* #UTDP9EUW-RECV.INSTRUCTOR-UIN(1:#MAX-INSTRUCTORS) moved in
+* TRANSLATE-WEB-INPUT subroutine.
+*
+MOVE #UTDP9EUW-RECV.INSTRUCTOR-TYPE(1:3)
+                                   TO #UTDP9EUS.IN-INSTRUCTOR-TYPE(1:3)
+MOVE #UTDP9EUW-RECV.MISC-INSTRUCTIONS
+                                   TO #UTDP9EUS.IN-MISC-INSTRUCTIONS
+*
+CALLNAT 'NRN$9EUS' #UTDP9EUS
+*        ========
+*
+IF #UTDP9EUS.RETURN-CODE NE ' '
+  MOVE 'NEUS'                      TO #UTDP9EUW-SEND.RETURN-CODE
+  COMPRESS #UTDP9EUS.RETURN-CODE #UTDP9EUS.RETURN-MSG
+                                   TO #UTDP9EUW-SEND.RETURN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+MOVE #UTDP9EUS.NEW-UNIQUE-NUMBER-FOR-STORE
+                           TO #UTDP9EUW-SEND.NEW-UNIQUE-NUMBER
+MOVE #UTDP9EUS.NBR-ENROLLEES-AFFECTED
+                           TO #UTDP9EUW-SEND.NBR-ENROLLEES-AFFECTED
+MOVE #UTDP9EUS.CHARS-FOUND-AND-REMOVED
+                           TO #UTDP9EUW-SEND.CHARS-FOUND-AND-REMOVED
+*
+END-SUBROUTINE                /* CALL-UPDATE-STORE-DELETE-MODULE
+*
+* -------------------------------------------------------------------- *
+END
