@@ -1,0 +1,210 @@
+**& Web wrapper for UTN$9ERE, retrieval module for DP-EPD-CLASS.
+**%*********************************************************************
+**%          SOFTWARE (C) THE UNIVERSITY OF TEXAS AT AUSTIN.           *
+**%                       ALL RIGHTS RESERVED.                         *
+**%UNAUTHORIZED COPYING OR TRANSMISSION OF THIS SOFTWARE IS PROHIBITED.*
+**%*********************************************************************
+**%             R E M A R K S    S E C T I O N
+**%******************************************************************* *
+**%
+**%   OBJECT NAME: UTNP9ERW
+**%        AUTHOR: Marjorie Foley
+**%    FILES READ: None
+**% FILES UPDATED: None
+**%       PURPOSE: Web wrapper for UTN$9ERE, a retrieval module for
+**%                module for UT-EPD-CLASS.
+**%
+**%******************************************************************* *
+*          D A T A   D E F I N I T I O N   S E C T I O N
+* ******************************************************************** *
+*
+DEFINE DATA
+*
+PARAMETER USING UTDP9ERW
+*
+LOCAL USING UTDP9ERE       /* Retrieves class infor from UT-EPD-CLASS
+LOCAL USING UTDPELKP       /* Assists in determining user authorization.
+LOCAL USING UTDLUSRN       /* Determines user UIN.
+LOCAL USING UTDLAFCD       /* Determines user AFF codes
+LOCAL USING UTDPSECU       /* Performs user security check.
+*
+LOCAL
+*
+1 #IX                  (I4)
+1 #INSTRUCTOR-COUNTER  (N2)
+1 #MAX-INSTRUCTORS     (N1) CONST <3>
+*
+END-DEFINE
+*
+* ******************************************************************** *
+*                M A I N   L O G I C   S E C T I O N
+* -------------------------------------------------------------------- *
+*
+PERFORM INITIAL-PROCESSING
+*       ==================
+*
+IF #UTDP9ERW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+PERFORM CHECK-USER-AUTHORIZATION
+*       ========================
+*
+IF #UTDP9ERW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+PERFORM CALL-RETRIEVAL-MODULE
+*       =====================
+*
+IF #UTDP9ERW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+PERFORM TRANSLATE-WEB-OUTPUT
+*       ===================
+*
+IF #UTDP9ERW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+* ******************************************************************** *
+*      I N T E R N A L   S U B R O U T I N E   S E C T I O N
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE INITIAL-PROCESSING
+* -------------------------------------------------------------------- *
+*
+RESET #UTDP9ERW-SEND
+*
+COMPUTE #UTDP9ERW-SEND-AMOUNT =  POS(#UTDP9ERW-SEND.LAST-SEND-FIELD)
+                                -POS(#UTDP9ERW-SEND.SEND-ARRAY (1) ) +1
+*
+EXAMINE #UTDP9ERW-RECV.COMPONENT AND TRANSLATE INTO UPPER CASE
+*
+END-SUBROUTINE                /* INITIAL-PROCESSING
+*
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE CHECK-USER-AUTHORIZATION
+* -------------------------------------------------------------------- *
+*
+RESET #UTDLUSRN
+RESET #UTDPSECU
+*
+MOVE #UTDLUSRN.USER-UIN            TO #UTDPSECU.USER-UIN
+*
+CALLNAT 'UTNPSECU' #UTDPSECU
+*        ========
+*
+IF #UTDPSECU.RTN-CODE NE ' '
+  MOVE 'NSCR'                      TO #UTDP9ERW-SEND.RETURN-CODE
+  COMPRESS #UTDPSECU.RTN-CODE #UTDPSECU.RTN-MSG
+                                   TO #UTDP9ERW-SEND.RETURN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+MOVE #UTDPSECU.IS-STAFF    TO #UTDP9ERW-SEND.VALID-STAFF-USER
+*
+END-SUBROUTINE                /* CHECK-USER-AUTHORIZATION
+*
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE CALL-RETRIEVAL-MODULE
+* -------------------------------------------------------------------- *
+*
+RESET #UTDP9ERE.IN
+*
+MOVE #UTDP9ERW-RECV.COMPONENT    TO #UTDP9ERE.IN-COMPONENT
+MOVE #UTDP9ERW-RECV.CLASS-UNIQUE-NUMBER
+                                 TO #UTDP9ERE.IN-CLASS-UNIQUE-NUMBER
+*
+CALLNAT 'UTN$9ERE' #UTDP9ERE
+*        ========
+*
+IF #UTDP9ERE.RETURN-CODE NE ' '
+  MOVE 'NERE'                    TO #UTDP9ERW-SEND.RETURN-CODE
+  COMPRESS #UTDP9ERE.RETURN-CODE #UTDP9ERE.RETURN-MSG
+                                 TO #UTDP9ERW-SEND.RETURN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+MOVE #UTDP9ERE.COMPONENT         TO #UTDP9ERW-SEND.COMPONENT
+MOVE #UTDP9ERE.COURSE-CATEGORY   TO #UTDP9ERW-SEND.COURSE-CATEGORY
+MOVE #UTDP9ERE.COURSE-NUMBER     TO #UTDP9ERW-SEND.COURSE-NUMBER
+MOVE #UTDP9ERE.CLASS-MEETING-CYMD
+                                 TO #UTDP9ERW-SEND.CLASS-MEETING-CYMD
+MOVE #UTDP9ERE.CLASS-UNIQUE-NUMBER
+                                 TO #UTDP9ERW-SEND.CLASS-UNIQUE-NUMBER
+MOVE #UTDP9ERE.ENROLLMENT-LIMIT  TO #UTDP9ERW-SEND.ENROLLMENT-LIMIT
+MOVE #UTDP9ERE.STUDENT-FEE       TO #UTDP9ERW-SEND.STUDENT-FEE
+MOVE #UTDP9ERE.CLASS-BEGIN-TIME-HHII
+                                 TO #UTDP9ERW-SEND.CLASS-BEGIN-TIME-HHII
+MOVE #UTDP9ERE.CLASS-END-TIME-HHII
+                                 TO #UTDP9ERW-SEND.CLASS-END-TIME-HHII
+MOVE #UTDP9ERE.LOCATION          TO #UTDP9ERW-SEND.LOCATION
+MOVE #UTDP9ERE.NBR-OF-ENROLLEES  TO #NRDP9ERW-SEND.NBR-OF-ENROLLEES
+MOVE #UTDP9ERE.NBR-OF-INSTRUCTORS
+                                 TO #UTDP9ERW-SEND.NBR-OF-INSTRUCTORS
+MOVE #UTDP9ERE.TITLE             TO #UTDP9ERW-SEND.TITLE
+MOVE #UTDP9ERE.DURATION-HOURS    TO #UTDP9ERW-SEND.DURATION-HOURS
+*
+* #UTDP9ERE.INSTRUCTOR-UIN(*) moved in
+* TRANSLATE-WEB-OUTPUT subroutine.
+*
+FOR-INST-TYPE.
+FOR #IX EQ 1 TO #MAX-INSTRUCTORS
+*
+  IF #UTDP9ERE.INSTRUCTOR-TYPE(#IX) EQ ' '
+    ESCAPE TOP
+  END-IF
+*
+  ADD 1 TO #INSTRUCTOR-COUNTER
+*
+  MOVE #UTDP9ERE.INSTRUCTOR-TYPE(#INSTRUCTOR-COUNTER) TO #UTDP9ERW-SEND.INSTRUCTOR-TYPE(
+*
+  MOVE #UTDP9ERE.INSTRUCTOR-TYPE(#INSTRUCTOR-COUNTER) TO #UTDP9ERW-SEND.INSTRUCTOR-TYPE(
+*
+  IF #INSTRUCTOR-COUNTER GE #MAX-INSTRUCTORS
+    ESCAPE BOTTOM
+  END-IF
+*
+END-FOR                       /* FOR-INST-INFO.
+*
+MOVE #UTDP9ERE.MISC-INSTRUCTIONS TO #UTDP9ERW-SEND.MISC-INSTRUCTIONS
+*
+END-SUBROUTINE                /* CALL-RETRIEVAL-MODULE
+*
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE TRANSLATE-WEB-OUTPUT
+* -------------------------------------------------------------------- *
+*
+RESET #UTDPELKP
+*
+FOR-INST-EID.
+*
+FOR #IX FROM 1 TO #UTDP9ERW-SEND.NBR-OF-INSTRUCTORS
+  IF #UTDP9ERE.INSTRUCTOR-UIN(#IX) EQ ' '
+    ESCAPE TOP
+  END-IF
+*
+  ADD 1 TO #INSTRUCTOR-COUNTER
+*
+  MOVE #UTDP9ERE.INSTRUCTOR-UIN(#IX) TO #UTDPELKP.IN-UIN
+*
+  CALLNAT 'UTN$ELKP' #UTDPELKP
+*          ========
+*
+  IF #UTDPELKP.RETURN-CODE NE ' '
+    MOVE 'NIIE'                      TO #UTDP9ERW-SEND.RETURN-CODE
+    COMPRESS #UTDPELKP.RETURN-CODE #UTDPELKP.RETURN-MSG
+                                     TO #UTDP9ERW-SEND.RETURN-MSG
+    ESCAPE ROUTINE
+  END-IF
+*
+  MOVE #UTDPELKP.EID                 TO #UTDP9ERW-SEND.INSTRUCTOR-EID(#IX)
+  MOVE #UTDPELKP.DISPLAY-NAME        TO #UTDP9ERW-SEND.INSTRUCTOR-NAME(#IX)
+*
+END-FOR                       /* FOR-INST-EID.
+*
+END-SUBROUTINE                /* TRANSLATE-WEB-OUTPUT
+*
+* -------------------------------------------------------------------- *
+END
