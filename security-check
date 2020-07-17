@@ -1,0 +1,133 @@
+
+**& Performs staff authorization checks
+**%*********************************************************************
+**%           SOFTWARE (C) THE UNIVERSITY OF TEXAS AT AUSTIN.          *
+**%                       ALL RIGHTS RESERVED.                         *
+**%UNAUTHORIZED COPYING OR TRANSMISSION OF THIS SOFTWARE IS PROHIBITED.*
+**%*********************************************************************
+**%             R E M A R K S    S E C T I O N
+**%******************************************************************* *
+**%
+**%   OBJECT NAME: DPNPSECU
+**%        AUTHOR: Marjorie Foley
+**%    FILES READ: None
+**% FILES UPDATED: None
+**%       PURPOSE: Performs authorization checks.
+**%
+**%******************************************************************* *
+*          D A T A   D E F I N I T I O N   S E C T I O N
+* ******************************************************************** *
+*
+DEFINE DATA
+*
+PARAMETER USING UTDPSECU
+LOCAL USING UTDPELKP   /* determines user aff codes
+LOCAL USING UTDLUSRN   /* determines current user uin
+LOCAL USING UTDPAVC    /* determines user application authorizations
+LOCAL USING UTDLAFCD   /* determines user aff codes
+*
+LOCAL
+*
+1 #IX            (I4)
+*
+1 #APPLICATION   (A20) CONST <'DP_DPCH9E'>
+1 #FIELD-1-NAME  (A20) CONST <'USER_STATUS'>
+1 #COMPONENT     (A1)  CONST <'0'>
+1 #TEST-OR-PROD  (A1)  CONST <'P'>
+1 #FIELD-1-VALUE (A20) CONST <'CLASS ADMINISTRATOR'>
+*
+END-DEFINE
+*
+* ******************************************************************** *
+*                M A I N   L O G I C   S E C T I O N
+* -------------------------------------------------------------------- *
+*
+IF #UTDPSECU.CHECK-IF-STAFF EQ TRUE
+*
+PERFORM CHECK-STAFF-AUTHORIZATION
+*       =========================
+END-IF
+*
+IF #UTDPSECU.RTN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+IF #UTDPSECU.CHECK-IF-ADMINISTRATOR EQ TRUE
+*
+  PERFORM CHECK-ADMINISTRATOR-AUTHORIZATION
+*         =================================
+END-IF
+*
+IF #UTDPSECU.RTN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+* ******************************************************************** *
+*      I N T E R N A L   S U B R O U T I N E   S E C T I O N
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE CHECK-STAFF-AUTHORIZATION
+* -------------------------------------------------------------------- *
+*
+RESET #UTDPELKP
+*
+MOVE #UTDLUSRN.USER-UIN                   TO #UTDPELKP.IN-UIN
+*
+CALLNAT 'UTN$ELKP' #UTDPELKP
+*        ========
+*
+IF #UTDPELKP.RETURN-CODE NE ' '
+  MOVE 'XUIU'                             TO #UTDPSECU.RTN-CODE
+  MOVE 'Authorization error.'             TO #UTDPSECU.RTN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+EXAMINE SUBSTRING(#UTDPELKP.AFF-CODES(*),2) FOR #UTDLAFCD.CURRENT-STAFF
+  GIVING INDEX IN #IX
+*
+IF #IX EQ 0
+  MOVE 'XAUT'                             TO #UTDPSECU.RTN-CODE
+  MOVE 'You are not authorized to view this page.'
+                                          TO #UTDPSECU.RTN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+MOVE TRUE                                 TO #UTDPSECU.IS-STAFF
+*
+END-SUBROUTINE                /* CHECK-STAFF-AUTHORIZATION
+*
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE CHECK-ADMINISTRATOR-AUTHORIZATION
+* -------------------------------------------------------------------- *
+*
+RESET UTDPAVC
+*
+MOVE #APPLICATION                  TO UTDPAVC.IN-APPLICATION-NAME
+MOVE #FIELD-1-NAME                 TO UTDPAVC.IN-FIELD-1-NAME
+MOVE #UTDLUSRN.USER-UIN            TO UTDPAVC.IN-MEMBER
+MOVE #COMPONENT                    TO UTDPAVC.IN-COMP
+MOVE #TEST-OR-PROD                 TO UTDPAVC.IN-TEST-OR-PROD
+MOVE #FIELD-1-VALUE                TO UTDPAVC.IN-FIELD-1-VALUE
+*
+CALLNAT 'UTN$AVC' UTDPAVC
+*        =======
+*
+IF UTDPAVC.OUT-CODE NE ' '
+  MOVE 'XAVC'                             TO #UTDPSECU.RTN-CODE
+  MOVE 'There has been an error processing your request. You are not at fault.'
+                                          TO #UTDPSECU.RTN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+IF UTDPAVC.OUT-VALID-USER EQ TRUE
+  MOVE TRUE                               TO #UTDPSECU.IS-ADMIN
+ELSE
+  MOVE 'XAVV'                             TO #UTDPSECU.RTN-CODE
+  MOVE 'You are not authorized to view this page .'
+                                          TO #UTDPSECU.RTN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+END-SUBROUTINE                /* CHECK-ADMINISTRATOR-AUTHORIZATION
+*
+END
+* -------------------------------------------------------------------- *
