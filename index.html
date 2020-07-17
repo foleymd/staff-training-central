@@ -1,0 +1,43 @@
+{% extends 'utd_base.html' %}
+
+{% block content %}
+
+<div id="news_items">
+ 	{% for item in dpdpindx.recv.news_items %}
+		<h4> {{ item.news_headline }} </h4>
+		<p> {{ item.news_text }} </p>
+	{% endfor %}
+</div>
+
+<div id="upcoming_classes">
+	<h4>Upcoming Classes</h4>
+	    {% if dpdpindx.recv.num_classes %}
+			<table>
+				<tr>
+					<th>Course ID</th>
+					<th>Course Title</th>
+					<th>Unique #</th>
+					<th>Date</th>
+					<th>Begin Time</th>
+					<th>End Time</th>
+					<th>Location</th>
+				</tr>
+				{% for item in dpdpindx.recv.upcoming_classes %}
+					<tr>
+	    				<td>{{ item.course_category }}
+	    				    {{ item.course_number }}</td>
+						<td>{{ item.course_title }}</td>
+						<td>{{ item.class_unique_number }}</td> 
+						<td>{{ item.class_date_display }}</td> 
+						<td>{{ item.class_begin_time_display }}</td> 
+						<td>{{ item.class_end_time_display }}</td> 
+						<td>{{ item.class_location }}</td> 
+					</tr>                                                                                                                                               
+				{% endfor %}
+			</table>
+		{% else %}
+			<p>There are no upcoming classes.</p>
+		{% endif %}
+</div>
+
+{% endblock %}
