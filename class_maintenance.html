@@ -1,0 +1,194 @@
+{% extends 'utd_base.html' %}
+
+{% load static from staticfiles %}
+
+{% block title %}Class Maintenance{% endblock %}
+
+{% block content %}
+
+{% if pda.recv.return_code and form_submitted %}
+    <div class="error">
+        {{ pda.recv.return_msg }}
+        ({{ pda.recv.return_code }})      
+    </div>
+    
+{% endif %}
+
+{% if action == 'S' %} 
+
+    <h2>Store a New Class ({{ pda.recv.course_category }} 
+                           {{ pda.recv.course_number }})</h2> 
+
+    <form id="storeclass" method="post" action="{% url class_maintenance %}
+        {{ action }}/{{ pda.recv.component }}/{{ pda.recv.course_category }}/
+        {{ pda.recv.course_number }}/">{% csrf_token %}
+
+        <input type="hidden" name="course_category" id="course_category" 
+            value="{{ pda.recv.course_category }}" />
+        <input type="hidden" name="course_number" id="course_number" 
+               value="{{ pda.recv.course_number }}" />
+    
+{% endif %}
+
+{% if action = 'U' %} 
+
+    <h2>Update Class {{ pda.recv.class_unique_number }} 
+                     {{ pda.recv.course_category }}{{ pda.recv.course_number }}</h2>
+
+    <form id="updateclass" method="post" action="{% url class_maintenance %}
+        {{ action }}/{{ pda.recv.component }}/{{ pda.recv.class_unique_number }}/">
+        {% csrf_token %}
+
+{% endif %}
+   
+    <div>Meeting
+
+        <label for="class_meeting_m">Month</label>
+        <select name="class_meeting_m" id="class_meeting_m" size="1">
+            <option value=""></option>
+            {% for month in MONTH %}
+                <option value="{{ month }}" 
+                    {% if pda.recv.class_meeting_m == month %}
+                    selected="selected"{% endif %}>{{ month }}
+                </option>
+            {% endfor %}    
+        </select>
+ 
+        <label for="class_meeting_d">Day</label>
+        <select name="class_meeting_d" id="class_meeting_d" size="1">
+            <option value=""></option>
+            {% for day in DAY %}
+                <option value="{{ day }}" 
+                    {% if pda.recv.class_meeting_d == day %}
+                    selected="selected"{% endif %}>{{ day }}
+                </option>
+            {% endfor %}    
+        </select>
+ 
+        <label for="class_meeting_cy">Year</label>
+        <select name="class_meeting_cy" id="class_meeting_cy" size="1">
+            <option value=""></option>
+            {% for year in YEAR %}
+                <option value="{{ year }}" 
+                    {% if pda.recv.class_meeting_cy == year %}
+                    selected="selected"{% endif %}>{{ year }}
+                </option>
+            {% endfor %}               
+        </select>        
+    </div>
+
+    <div>
+        <label for="class_begin_time_hhii">Begin Time</label>
+        <select name="class_begin_time_hhii" id="class_begin_time_hhii" size="1">
+            <option value=""></option>
+            {% for begin_time_hhii, begin_time_hhiiap in TIME_HHII %}
+                {% if begin_time_hhii < '1700' %}
+                    <option value="{{ begin_time_hhii }}" 
+                        {% if pda.recv.class_begin_time_hhii == begin_time_hhii %}
+                        selected="selected"{% endif %}>{{ begin_time_hhiiap }}
+                    </option>
+        	    {% endif %}
+        	{% endfor %}               
+        </select>       
+    </div>
+    
+    <div>       
+        <label for="class_end_time_hhii">End Time</label>
+        <select name="class_end_time_hhii" id="class_end_time_hhii" size="1">
+            <option value=""></option> 
+        	{% for end_time_hhii, end_time_hhiiap in TIME_HHII %}
+        	    {% if end_time_hhii > '0800' %}
+        	        <option value="{{ end_time_hhii }}" 
+                         {% if pda.recv.class_end_time_hhii == end_time_hhii %}
+                         selected="selected"{% endif %}>{{ end_time_hhiiap }}
+                     </option>        	
+        	    {% endif %}
+        	{% endfor %}               
+        </select>               
+    </div>
+ 
+     <div>
+	  <label for="location">Location (Capacity)</label>
+         <select name="location" id="location" size="1">
+            <option value=""></option> 
+        	{% for class_location, capacity in LOCATION %}
+        	    <option value="{{ class_location }}" 
+                     {% if pda.recv.location == class_location %}
+                     selected="selected"{% endif %}>{{ class_location }} 
+                     ({{ capacity }})
+                 </option>        	
+        	{% endfor %}               
+        </select> 
+    </div>        
+
+    <div>
+		<label for="enrollment_limit">Enrollment Limit</label>
+		<input name="enrollment_limit" id="enrollment_limit" 
+		       value="{{ pda.recv.enrollment_limit }}" 
+		       size="3" maxlength="3" />          
+    </div>
+    
+    <div>
+		<label for="student_fee">Student Fee (max. $1000.00) $</label>
+		<input name="student_fee" id="student_fee" 
+                 value="{{ pda.recv.student_fee }}" size="7" maxlength="7" />          
+    </div>
+  
+    <div>
+	    <label for="instructor_eid_1">Instructor 1 EID</label>
+		<input name="instructor_eid_1" id="instructor_eid_1"
+		       value="{{ instructor_eid_1 }}" size="8" maxlength="8" />  
+
+        <label for="instructor_type_1">Instructor 1 Type</label>
+        <select name="instructor_type_1" id="instructor_type_1" size="">
+            <option value="" selected="selected"></option>
+            <option value="Instructor" {% if instructor_type_1 == 'I' %}
+                selected="selected"{% endif %}>Instructor</option>
+            <option value="Assistant" {% if instructor_type_1 == 'A' %}
+                selected="selected"{% endif %}>Assistant</option>
+        </select> 
+    </div>
+        
+    <div>
+	 <label for="instructor_eid_2">Instructor 2 EID</label>
+        <input name="instructor_eid_2" id="instructor_eid_2" 
+		       value="{{ instructor_eid_2 }}" size="8" maxlength="8" />  
+
+        <label for="instructor_type_2">Instructor 2 Type</label>
+        <select name="instructor_type_2" id="instructor_type_2" size="">
+            <option value="" selected="selected"></option>
+            <option value="Instructor" {% if instructor_type_2 == 'I' %}
+                selected="selected"{% endif %}>Instructor</option>
+            <option value="Assistant" {% if instructor_type_2 == 'A' %}
+                selected="selected"{% endif %}>Assistant</option>
+        </select> 
+    </div>
+        
+    <div>
+	    <label for="instructor_eid_3">Instructor 3 EID</label>
+		<input name="instructor_eid_3" id="instructor_eid_3"
+		       value="{{ instructor_eid_3 }}" size="8" maxlength="8" />  
+
+        <label for="instructor_type_3">Instructor 3 Type</label>
+        <select name="instructor_type_3" id="instructor_type_3" size="">
+            <option value="" selected="selected"></option>
+            <option value="Instructor" {% if instructor_type_3 == 'I' %}
+                selected="selected"{% endif %}>Instructor</option>
+            <option value="Assistant" {% if instructor_type_3 == 'A' %}
+                selected="selected"{% endif %}>Assistant</option>
+        </select>  
+    </div>
+
+    <div>
+        <label for="misc_instructions">Miscellaneous Instructions</label>
+        <div><textarea name="misc_instructions" id="misc_instructions" rows="5"              
+                 cols="50">{{ pda.recv.misc_instructions }}</textarea></div>           
+    </div>
+    
+    <input type="hidden" name="action" id="action" value="{{ action }}" />   
+    <input type="hidden" name="form_submitted" id="form_submitted" value="True" />
+    <div><input type="submit" name="submit" id="submit" value="Submit" /></div>
+         
+</form>
+
+{% endblock %}
