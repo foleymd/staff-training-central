@@ -1,2 +1,2 @@
 # staff-training-central
-Natura; &amp; Python/Django project
+Natural and Python/Django project for a centralized staff training registration applciation
