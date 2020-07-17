@@ -1,0 +1,144 @@
+{% extends 'utd_base.html' %}
+
+{% load static from staticfiles %}
+
+{% block title %}Class Roster Search Form{% endblock %}
+
+{% block content %}
+
+{% if nrdprosw.recv.return_code and form_submitted %}
+  
+    <div class="error">
+        {{ nrdprosw.recv.return_msg }}
+        ({{ nrdprosw.recv.return_code }})      
+    </div>
+
+{% endif %}  
+
+<form id="rostersearch" method="get" action="{% url classroster %}">
+          
+    <div>
+		<label for="class_unique">Class Unique Number</label>
+		<input name="class_unique" id="class_unique" 
+		       value="{{ nrdprosw.send.class_unique_number }}" 
+		       size="5" maxlength="5" />          
+    </div>
+            
+    <div>
+        <label for="start_name">Start Name</label>
+        <input name="start_name" id="start_name" 
+        value="{{ nrdprosw.send.paging_name }}" size="20" maxlength="50" />          
+    </div>
+
+    <input type="hidden" name="form_submitted" id="form_submitted" value="True" />
+    <input type="submit" name="submit" id="submit" value="Submit" />
+         
+</form>
+
+{% if not nrdprosw.recv.return_code and nrdprosw.recv.class_unique_number %}
+
+<form id="nextpageform" method="get" action="{% url classroster %}">
+
+    <input type="hidden" name="next_page_submitted" id="next_page_submitted" 
+           value="True" />
+    <input type="hidden" name="class_unique" id="class_unique_next" 
+           value="{{ nrdprosw.recv.class_unique_number }}" />
+ 	<input type="hidden" name="paging_name" id="paging_name" 
+ 	       value="{{ nrdprosw.recv.paging_name }}" />
+  	<input type="hidden" name="paging_isn" id="paging_isn" 
+  	       value="{{ nrdprosw.recv.paging_isn }}" />    
+   	<input type="submit" name="next_page" id="next_page" 
+   	       value="Next Page" />
+
+</form>
+        
+    <div id="classrosterresults">
+    
+        <h2>Search Results</h2>
+
+            <dl id="classinfo">
+                <dt>Course Title</dt>
+                    <dd>{{ nrdprosw.recv.course_title }}</dd>
+                <dt>Course <abbr title="Identification">ID</abbr></dt>
+                    <dd>{{ nrdprosw.recv.course_id }}</dd>
+                <dt>Class Unique Number</dt>
+                    <dd>{{ nrdprosw.send.class_unique_number }}</dd>
+                <dt>Class Date</dt>
+                    <dd>{{ nrdprosw.recv.class_meeting_mmddyy }}</dd>
+                <dt>Begin Time</dt>
+                    <dd>{{ nrdprosw.recv.class_begin_time_hhiiap }}</dd>
+                <dt>End Time</dt>
+                    <dd>{{ nrdprosw.recv.class_end_time_hhiiap }}</dd>
+                <dt>Location</dt>
+                    <dd>{{ nrdprosw.recv.location }}</dd>
+                {% if nrdprosw.recv.misc_instructions %}    
+                    <dt>Misc. Instructions</dt>
+                        <dd>{{ nrdprosw.recv.misc_instructions }}</dd>
+                {% endif %}     
+            </dl>   
+
+        <table id="instructors" summary="This table displays instructors for a 
+                                         class retrieved through a unique number 
+                                         search.">
+                      
+        	<thead>        
+            	<tr>
+             	    <th id="instructor_name">Instructor Name</th>
+             	    <th id="instructor_type">Instructor Type</th>
+             	    <th id="instructor_eid">Instructor EID</th>
+                </tr>        
+            </thead>
+    
+            <tbody>               
+                {% for instructor in instructors %}
+                    <tr>
+                        <td headers="instructor_name">
+                        	{{ instructor.instructor_name }}</td>
+                        <td headers="instructor_type">
+                        	{{ instructor.instructor_type }}</td>
+                        <td headers="instructor_eid">
+                        	{{ instructor.instructor_eid }}</td>	
+                    </tr>                                       
+                {% endfor %}  
+            </tbody>
+        
+        </table>
+
+        {% if nrdprosw.recv.total_enrollees != '0' %}
+         
+            <table id="enrollees" summary="This table displays a roster of 
+                                           students retrieved through a unique 
+                                           number search.">
+        
+                <thead>        
+                	<tr>
+             		    <th id="student_name">Student Name</th>
+             		    <th id="student_eid">EID</th>
+            	    </tr>        
+        	    </thead>
+    
+        	    <tbody>   
+            	    {% for enrollee in enrollees %}
+                        <tr>
+                            <td headers="student_name">
+                        	    {{ enrollee.enrollee_name }}</td>
+                        	<td headers="student_eid">
+                        	    {{ enrollee.enrollee_eid }}</td>
+                    	</tr>                              
+            	    {% endfor %}  
+        	    </tbody>
+        
+            </table> 
+       
+        {% else %}
+            <div class="notfound">No enrollees found.</div>     
+            
+        {% endif %}
+                
+    </div> 
+    
+{% endif %} 
+
+<a href="{% url index %}">Return to Staff Training Central Home</a>
+
+{% endblock %}
