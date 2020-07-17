@@ -1,0 +1,38 @@
+{% extends 'utd_base.html' %}
+
+{% load static from staticfiles %}
+
+{% block title %}Class Maintenance{% endblock %}
+
+{% block content %}
+
+{% if return_code %}
+    <div class="error">
+        {{ return_msg }}
+        ({{ return_code }})      
+    </div>
+    
+{% endif %}
+
+<div>Are you sure you want to delete class {{ class_unique_number }}?</div>
+<div>This action cannot be undone.</div>
+
+<form id="deleteclass" class="inline" method="post" action="{% url class_delete %}
+    {{ action }}/{{ component }}/{{ class_unique_number }}/{{ course_category }}/
+    {{ course_number }}/">{% csrf_token %}
+
+    <input type="hidden" name="action" id="action" value="{{ action }}" />
+    <input type="hidden" name="class_unique_number" id="class_unique_number"       
+        value="{{ class_unique_number }}" />
+    <input type="hidden" name="delete_submitted" id="delete_submitted" 
+        value="True" />   
+    <input type="submit" name="submit" id="submit" value="Delete Class" />
+         
+</form>
+
+<form class="inline" action="{% url class_details %}{{ class_unique_number }}/">
+    <input type="submit" value="Cancel">
+</form>
+
+
+{% endblock %}
