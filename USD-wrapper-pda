@@ -1,0 +1,75 @@
+* PDA for UTNP9EUW, the web wrapper for UTN$9EUS,
+* and update/store/delete module for DP-EPD-CLASS.
+*
+1 #UTDP9EUW-SEND
+*
+  2 SEND-ARRAY                                    (A1)      (1:25000)
+  2 REDEFINE SEND-ARRAY                                     /* BEGIN REDEFINE: SEND-ARRAY
+*
+    3 SERVER-ERROR-DATA                           (A100)
+*
+    3 RETURN-CODE                                 (A4)
+    3 RETURN-MSG                                  (A200)
+*
+    3 NEW-UNIQUE-NUMBER                           (A5)
+    3 NBR-ENROLLEES-AFFECTED                      (N3)
+    3 CHARS-FOUND-AND-REMOVED                     (L)
+    3 VALID-ADMIN-USER                            (L)
+*
+    3 ACTION                                      (A1)      /*'U', 'S', or 'D'
+*
+    3 COMPONENT                                   (A1)
+    3 CLASS-UNIQUE-NUMBER                         (A5)
+    3 COURSE-ID                                   (A6)
+    3 REDEFINE COURSE-ID                                    /* BEGIN REDEFINE: COURSE-ID
+      4 COURSE-CATEGORY                           (A3)
+      4 COURSE-NUMBER                             (A3)
+    3 CLASS-MEETING-CYMD                          (A8)
+    3 REDEFINE CLASS-MEETING-CYMD                           /* BEGIN REDEFINE: CLASS-MEETING
+      4 CLASS-MEETING-CY                          (A4)
+      4 CLASS-MEETING-M                           (A2)
+      4 CLASS-MEETING-D                           (A2)
+    3 ENROLLMENT-LIMIT                            (N3)
+    3 STUDENT-FEE                                 (N5.2)
+    3 CLASS-BEGIN-TIME-HHII                       (A4)
+    3 CLASS-END-TIME-HHII                         (A4)
+    3 LOCATION                                    (A8)
+    3 INSTRUCTOR-INFO                             (1:3)
+      4 INSTRUCTOR-EID                            (A8)
+      4 INSTRUCTOR-TYPE                           (A1)
+    3 MISC-INSTRUCTIONS                           (A250)
+*
+    3 LAST-SEND-FIELD                             (A1)
+*
+1 #UTDP9EUW-RECV
+*
+  2 RECV-ARRAY                                    (A1)      (1:10000)
+  2 REDEFINE RECV-ARRAY                                     /* BEGIN REDEFINE: RECV-ARRAY
+*
+    3 SUBPROGRAM-TO-CALL                          (A8)
+    3 WEBTOKEN                                    (A36)
+*
+    3 ACTION                                      (A1)
+*
+    3 COMPONENT                                   (A1)
+    3 CLASS-UNIQUE-NUMBER                         (A5)
+    3 COURSE-ID                                   (A6)
+    3 REDEFINE COURSE-ID                                    /* BEGIN REDEFINE: COURSE-ID
+      4 COURSE-CATEGORY                           (A3)
+      4 COURSE-NUMBER                             (A3)
+    3 CLASS-MEETING-CYMD                          (A8)
+    3 REDEFINE CLASS-MEETING-CYMD                           /* BEGIN REDEFINE: CLASS-MEETING
+      4 CLASS-MEETING-CY                          (A4)
+      4 CLASS-MEETING-M                           (A2)
+      4 CLASS-MEETING-D                           (A2)
+    3 ENROLLMENT-LIMIT                            (N3)
+    3 STUDENT-FEE                                 (N5.2)
+    3 CLASS-BEGIN-TIME-HHII                       (A4)
+    3 CLASS-END-TIME-HHII                         (A4)
+    3 LOCATION                                    (A8)
+    3 INSTRUCTOR-INFO                             (1:3)
+      4 INSTRUCTOR-EID                            (A8)
+      4 INSTRUCTOR-TYPE                           (A1)
+    3 MISC-INSTRUCTIONS                           (A250)
+*
+1 #UTDP9EUW-SEND-AMOUNT                           (N5.0)
