@@ -1,0 +1,58 @@
+1 #UTDPROSW-SEND
+* *
+* PDA for UTNPROSW, the web wrapper for UTNPROS1.
+* Returns class roster and associated info from unique number search.
+*
+  2 SEND-ARRAY                                    (A1)      (1:25000)
+  2 REDEFINE SEND-ARRAY                                     /* BEGIN REDEFINE: SEND-ARRAY
+* *
+    3 SERVER-ERROR-DATA                           (A100)
+* *
+    3 RETURN-CODE                                 (A4)
+    3 RETURN-MSG                                  (A200)
+* *
+    3 COMPONENT                                   (A1)
+    3 COURSE-ID                                   (A6)
+    3 REDEFINE COURSE-ID                                    /* BEGIN REDEFINE: COURSE-ID
+      4 COURSE-CATEGORY                           (A3)
+      4 COURSE-NUMBER                             (A3)
+    3 CLASS-MEETING-MMDDYY                        (A8)      /*example: 12/09/13
+    3 CLASS-UNIQUE-NUMBER                         (A5)
+    3 CLASS-BEGIN-TIME-HHIIAP                     (A7)      /*example: 12:30PM
+    3 CLASS-END-TIME-HHIIAP                       (A7)      /*example: 12:30PM
+    3 LOCATION                                    (A8)
+    3 MISC-INSTRUCTIONS                           (A250)
+*
+    3 INSTRUCTOR-INFO                             (1:3)
+      4 INSTRUCTOR-NAME                           (A50)
+      4 INSTRUCTOR-TYPE                           (A10)
+      4 INSTRUCTOR-EID                            (A8)
+    3 NUMBER-INSTRUCTORS-RETURNED                 (N1)
+*
+    3 COURSE-TITLE                                (A30)
+*
+    3 ENROLLEE-INFO                               (1:10)
+      4 ENROLLEE-NAME                             (A30)
+      4 ENROLLEE-EID                              (A8)
+    3 TOTAL-ENROLLEES                             (A3)
+    3 NUMBER-ENROLLEES-RETURNED                   (A2)
+*
+    3 PAGING-NAME                                 (A30)
+    3 PAGING-ISN                                  (A10)
+* *
+    3 LAST-SEND-FIELD                             (A1)
+* *
+1 #UTDPROSW-RECV
+*
+  2 RECV-ARRAY                                    (A1)      (1:10000)
+  2 REDEFINE RECV-ARRAY                                     /* BEGIN REDEFINE: RECV-ARRAY
+*
+    3 SUBPROGRAM-TO-CALL                          (A8)
+    3 WEBTOKEN                                    (A36)
+*
+    3 COMPONENT                                   (A1)      /*Required = 0
+    3 CLASS-UNIQUE-NUMBER                         (A5)      /*Required
+    3 PAGING-NAME                                 (A30)
+    3 PAGING-ISN                                  (A10)
+* *
+1 #UTDPROSW-SEND-AMOUNT                           (N5.0)
