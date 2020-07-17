@@ -1,0 +1,15 @@
+{% extends "utd_base.html" %}
+
+{% block content %}
+
+	<h3> There has been an error </h3>
+	
+    {% if exception_msg %}
+    	<div class="error">Error: {{ exception_msg }}</div>
+  	{% endif %}
+  	
+  	{% if return_msg %}
+    	<div class="error">Error: {{ return_msg }} ({{ return_code }})</div>
+  	{% endif %}
+  
+{% endblock %} 
