@@ -1,0 +1,329 @@
+**& Web wrapper for UTDPROS1, which returns a class roster.
+**%*********************************************************************
+**%          SOFTWARE (C) THE UNIVERSITY OF TEXAS AT AUSTIN.           *
+**%                       ALL RIGHTS RESERVED.                         *
+**%UNAUTHORIZED COPYING OR TRANSMISSION OF THIS SOFTWARE IS PROHIBITED.*
+**%*********************************************************************
+**%             R E M A R K S    S E C T I O N
+**%******************************************************************* *
+**%
+**%   OBJECT NAME: UTNPROSW
+**%        AUTHOR: Marjorie Foley
+**%    FILES READ: Modules called by this one read various files,
+**%                including DP-EPD-CLASS, DP-EPD-COURSE, AND
+**%                DP-EPD-ENROLLEE.
+**% FILES UPDATED: None
+**%       PURPOSE: This module is the web wrapper for UTDPROS1, which
+**%                returns a class roster based on a unique number
+**%                search.
+**%
+**%******************************************************************* *
+*          D A T A   D E F I N I T I O N   S E C T I O N
+* ******************************************************************** *
+*
+DEFINE DATA
+*
+PARAMETER USING UTDPROSW
+*
+LOCAL USING UTDPROS1     /* Returns roster and associated class info.
+LOCAL USING UTDLUSRN     /* Parses user's UIN to check authorization.
+LOCAL USING UTDLAFCD     /* Provides codes for authorization check.
+LOCAL USING UTDPELKP     /* Assists checking user authorization, returns
+                         /* instructor name, and returns enrollee EID
+*                        /* based on UIN input.
+LOCAL
+*
+* -- Indexes and counters
+*
+1 #IX                        (I4)
+1 #JX                        (I4)
+1 #KX                        (I4)
+*
+1 #INSTRUCTOR-COUNTER        (N1)
+*
+* -- Hold variables
+*
+1 #NBR-EUTOLLEES-TO-RTN      (N2)
+1 #ISN                       (P10)
+*
+1 #DATE-D                    (D)
+1 #DATE-MMDDYY               (A8)
+1 #TIME-T                    (T)
+1 #BEGIN-TIME-HHIIAP         (A7)
+1 #END-TIME-HHIIAP           (A7)
+*
+* -- File views
+*
+1 CLASS VIEW OF DP-EPD-CLASS
+  2 MISC-INSTRUCTIONS
+*
+* -- Search keys
+*
+1 #SK-COMP-UNIQUE         (A6)        /* Searches class file
+1 REDEFINE #SK-COMP-UNIQUE
+  2 COMP                  (A1)
+  2 UNIQUE                (A5)
+*
+END-DEFINE
+*
+* ******************************************************************** *
+*                M A I N   L O G I C   S E C T I O N
+* -------------------------------------------------------------------- *
+*
+PERFORM INITIAL-PROCESSING
+*       ==================
+*
+IF #UTDPROSW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+PERFORM CHECK-USER-AUTHORIZATION
+*       ========================
+*
+IF #UTDPROSW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+PERFORM AUDIT-INPUT-DATA
+*       ================
+*
+IF #UTDPROSW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+PERFORM RETRIEVE-ROSTER
+*       ===============
+*
+IF #UTDPROSW-SEND.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+* ******************************************************************** *
+*      I N T E R N A L   S U B R O U T I N E   S E C T I O N
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE INITIAL-PROCESSING
+* -------------------------------------------------------------------- *
+*
+RESET #UTDPROSW-SEND
+*
+COMPUTE #UTDPROSW-SEND-AMOUNT =   POS(#UTDPROSW-SEND.LAST-SEND-FIELD)
+                                - POS(#UTDPROSW-SEND.SEND-ARRAY (1) ) +1
+*
+MOVE #UTDPROSW-RECV.COMPONENT      TO #UTDPROSW-SEND.COMPONENT
+MOVE #UTDPROSW-RECV.CLASS-UNIQUE-NUMBER
+                                   TO #UTDPROSW-SEND.CLASS-UNIQUE-NUMBER
+MOVE #UTDPROSW-RECV.PAGING-NAME    TO #UTDPROSW-SEND.PAGING-NAME
+MOVE #UTDPROSW-RECV.PAGING-ISN     TO #UTDPROSW-SEND.PAGING-ISN
+*
+EXAMINE #UTDPROSW-RECV.COMPONENT AND TRANSLATE INTO UPPER CASE
+EXAMINE #UTDPROSW-RECV.PAGING-NAME AND TRANSLATE INTO UPPER CASE
+*
+END-SUBROUTINE                /* INITIAL-PROCESSING
+*
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE CHECK-USER-AUTHORIZATION
+* -------------------------------------------------------------------- *
+*
+RESET #UTDPELKP
+*
+MOVE #UTDLUSRN.USER-UIN                   TO #UTDPELKP.IN-UIN
+*
+CALLNAT 'UTN$ELKP' #UTDPELKP
+*        ========
+*
+IF #UTDPELKP.RETURN-CODE NE ' '
+  MOVE 'XUIU'                             TO #UTDPROSW-SEND.RETURN-CODE
+  MOVE 'Authorization error.'
+                                          TO #UTDPROSW-SEND.RETURN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+EXAMINE SUBSTRING(#UTDPELKP.AFF-CODES(*),2) FOR #UTDLAFCD.CURRENT-STAFF
+  GIVING INDEX IN #IX
+*
+IF #IX EQ 0
+  MOVE 'XAUT'                             TO #UTDPROSW-SEND.RETURN-CODE
+  MOVE 'You are not authorized to view this page.'
+                                          TO #UTDPROSW-SEND.RETURN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+END-SUBROUTINE                /* CHECK-USER-AUTHORIZATION
+*
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE AUDIT-INPUT-DATA
+* -------------------------------------------------------------------- *
+*
+IF #UTDPROSW-RECV.COMPONENT EQ ' '
+  MOVE 'NCMP'                             TO #UTDPROSW-SEND.RETURN-CODE
+  MOVE 'Component cannot be blank Please enter a component.'
+                                          TO #UTDPROSW-SEND.RETURN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+IF #UTDPROSW-RECV.CLASS-UNIQUE-NUMBER NE MASK (NNNNN)
+  MOVE 'NUNI'                             TO #UTDPROSW-SEND.RETURN-CODE
+  MOVE 'Invalid unique number. Please enter a 5-digit unique number.'
+                                          TO #UTDPROSW-SEND.RETURN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+IF #UTDPROSW-RECV.PAGING-ISN NE ' '
+  IF #UTDPROSW-RECV.PAGING-ISN LT '0'
+    MOVE 'NISN'                           TO #UTDPROSW-SEND.RETURN-CODE
+    MOVE 'Error processing paging.'
+                                          TO #UTDPROSW-SEND.RETURN-MSG
+    ESCAPE ROUTINE
+  END-IF
+END-IF
+*
+IF #UTDPROSW-RECV.PAGING-ISN IS (N10)
+  COMPUTE #ISN = VAL(#UTDPROSW-RECV.PAGING-ISN)
+END-IF
+*
+END-SUBROUTINE                /* AUDIT-INPUT-DATA
+*
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE RETRIEVE-ROSTER
+* -------------------------------------------------------------------- *
+*
+RESET #UTDPROS1
+*
+MOVE #UTDPROSW-RECV.COMPONENT       TO #UTDPROS1.IN-COMP
+MOVE #UTDPROSW-RECV.CLASS-UNIQUE-NUMBER
+                                    TO #UTDPROS1.IN-UNIQUE
+MOVE #UTDPROSW-RECV.PAGING-NAME     TO #UTDPROS1.IN-PAGING-NAME
+MOVE #ISN                           TO #UTDPROS1.IN-PAGING-ISN
+*
+CALLNAT 'UTNPROS1' #UTDPROS1
+*        ========
+*
+IF #UTDPROS1.RETURN-CODE NE ' '
+  MOVE #UTDPROS1.RETURN-CODE        TO #UTDPROSW-SEND.RETURN-CODE
+  MOVE #UTDPROS1.RETURN-MSG         TO #UTDPROSW-SEND.RETURN-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+PERFORM TRANSLATE-TO-WEB-OUTPUT
+*       =======================
+*
+MOVE #UTDPROS1.COURSE-ID       TO #UTDPROSW-SEND.COURSE-ID
+MOVE #DATE-MMDDYY              TO #UTDPROSW-SEND.CLASS-MEETING-MMDDYY
+MOVE #BEGIN-TIME-HHIIAP        TO #UTDPROSW-SEND.CLASS-BEGIN-TIME-HHIIAP
+MOVE #END-TIME-HHIIAP          TO #UTDPROSW-SEND.CLASS-END-TIME-HHIIAP
+MOVE #UTDPROS1.LOCATION        TO #UTDPROSW-SEND.LOCATION
+MOVE #UTDPROS1.COURSE-TITLE    TO #UTDPROSW-SEND.COURSE-TITLE
+MOVE #UTDPROS1.ENROLLEE-NAME(1:10)
+                               TO #UTDPROSW-SEND.ENROLLEE-NAME(*)
+MOVE #UTDPROS1.TOTAL-ENROLLEES-CTR
+                               TO #UTDPROSW-SEND.TOTAL-ENROLLEES
+*
+* IF #UTDPROS1.NBR-ENROLLEES-RTND GT 0
+  MOVE #UTDPROS1.NBR-ENROLLEES-RTND
+                               TO #UTDPROSW-SEND.NUMBER-ENROLLEES-RETURNED
+* END-IF
+*
+MOVE #UTDPROS1.PAGING-NAME     TO #UTDPROSW-SEND.PAGING-NAME
+MOVE #UTDPROS1.PAGING-ISN      TO #UTDPROSW-SEND.PAGING-ISN
+*
+RESET #SK-COMP-UNIQUE
+*
+MOVE #UTDPROSW-SEND.COMPONENT  TO #SK-COMP-UNIQUE.COMP
+MOVE #UTDPROSW-SEND.CLASS-UNIQUE-NUMBER
+                               TO #SK-COMP-UNIQUE.UNIQUE
+FIND-MISC-INSTRUCTIONS.
+FIND RECORDS IN CLASS WITH COMP-UNIQUE EQ #SK-COMP-UNIQUE
+  MOVE CLASS.MISC-INSTRUCTIONS TO #UTDPROSW-SEND.MISC-INSTRUCTIONS
+END-FIND                      /* FIND-MISC-INSTRUCTIONS.
+*
+END-SUBROUTINE                /* RETRIEVE-ROSTER
+*
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE TRANSLATE-TO-WEB-OUTPUT
+* -------------------------------------------------------------------- *
+*
+MOVE EDITED #UTDPROS1.CLASS-MEETING-CYMD
+                                  TO #DATE-D (EM=YYYYMMDD)
+MOVE EDITED #DATE-D (EM=MM/DD/YY) TO #DATE-MMDDYY
+*
+MOVE EDITED #UTDPROS1.CLASS-BEGIN-TIME-HHII
+                                  TO #TIME-T (EM=HHII)
+MOVE EDITED #TIME-T (EM=HH':'IIAP)
+                                  TO #BEGIN-TIME-HHIIAP
+*
+MOVE EDITED #UTDPROS1.CLASS-END-TIME-HHII
+                                  TO #TIME-T (EM=HHII)
+MOVE EDITED #TIME-T (EM=HH':'IIAP)
+                                  TO #END-TIME-HHIIAP
+*
+FOR-INST-INFO.
+FOR #JX EQ 1 TO 10
+*
+  IF #UTDPROS1.INSTRUCTOR-TYPE(#JX) EQ 'I'
+    MOVE 'Instructor'             TO #UTDPROSW-SEND.INSTRUCTOR-TYPE(#JX)
+  END-IF
+*
+  IF #UTDPROS1.INSTRUCTOR-TYPE(#JX) EQ 'A'
+    MOVE 'Assistant'              TO #UTDPROSW-SEND.INSTRUCTOR-TYPE(#JX)
+  END-IF
+*
+  RESET #UTDPELKP
+*
+  IF #UTDPROS1.INSTRUCTOR-UIN(#JX) EQ ' '
+    ESCAPE TOP
+  END-IF
+*
+  ADD 1 TO #INSTRUCTOR-COUNTER
+*
+  MOVE #UTDPROS1.INSTRUCTOR-UIN(#JX)
+                                  TO #UTDPELKP.IN-UIN
+*
+  CALLNAT 'UTN$ELKP' #UTDPELKP
+*          ========
+*
+  IF #UTDPELKP.RETURN-CODE NE ' '
+    MOVE 'NUII'                   TO #UTDPROSW-SEND.RETURN-CODE
+    MOVE 'Invalid instructor UIN. Please enter a valid UIN.'
+                                  TO #UTDPROSW-SEND.RETURN-MSG
+  END-IF
+*
+  MOVE #UTDPELKP.DISPLAY-NAME     TO #UTDPROSW-SEND.INSTRUCTOR-NAME(#JX)
+  MOVE #UTDPELKP.EID              TO #UTDPROSW-SEND.INSTRUCTOR-EID(#JX)
+*
+  IF #INSTRUCTOR-COUNTER GE 3
+    ESCAPE BOTTOM (FOR-INST-INFO.)
+  END-IF
+*
+END-FOR                           /* INST-INFO
+*
+MOVE #INSTRUCTOR-COUNTER TO #UTDPROSW-SEND.NUMBER-INSTRUCTORS-RETURNED
+*
+FOR-ENRL-EID.
+FOR #KX FROM 1 TO 10
+*
+  RESET #UTDPELKP
+*
+  IF #UTDPROS1.EUTOLLEE-UIN(#KX) EQ ' '
+    ESCAPE TOP
+  END-IF
+*
+  MOVE #UTDPROS1.ENROLLEE-UIN(#KX)
+                                  TO #UTDPELKP.IN-UIN
+*
+  CALLNAT 'UTN$ELKP' #UTDPELKP
+*          ========
+*
+  IF #UTDPELKP.RETURN-CODE NE ' '
+    MOVE 'NUIE'                   TO #UTDPROSW-SEND.RETURN-CODE
+    MOVE 'Invalid enrollee UIN.'  TO #UTDPROSW-SEND.RETURN-MSG
+    ESCAPE ROUTINE
+  END-IF
+*
+  MOVE #UTDPELKP.EID              TO #UTDPROSW-SEND.ENROLLEE-EID(#KX)
+*
+END-FOR                           /* ENRL-EID
+*
+END-SUBROUTINE                    /* TRANSLATE-TO-WEB-OUTPUT
+* -------------------------------------------------------------------- *
+*
+END
